@@ -1,8 +1,17 @@
 global loader
 
-MAGIC_NUMBER equ 0x1BADB002
-FLAGS        equ 0x0
-CHECKSUM     equ -MAGIC_NUMBER
+extern c_add
+
+
+MAGIC_NUMBER      equ 0x1BADB002
+FLAGS             equ 0x0
+CHECKSUM          equ -MAGIC_NUMBER
+KERNEL_STACK_SIZE equ 4096
+
+section .bss
+align 4
+kernel_stack:
+    resb KERNEL_STACK_SIZE
 
 section .text:
 align 4
@@ -11,8 +20,12 @@ align 4
     dd CHECKSUM
 
 loader:
-    mov eax, 0xDEADBEEF
+    mov  esp, kernel_stack + KERNEL_STACK_SIZE
+    push dword 4
+    push dword 3
+    call c_add
+    ; mov  eax, 0xDEADBEEF
 .loop:
-    jmp .loop
+    jmp  .loop
 
 ; vim:ft=nasm
