@@ -1,6 +1,7 @@
 global loader
+global a_out
 
-extern c_add
+extern main
 
 
 MAGIC_NUMBER      equ 0x1BADB002
@@ -19,12 +20,15 @@ align 4
     dd FLAGS
     dd CHECKSUM
 
+a_out:
+    mov al, [esp + 8]  ; data to be sent
+    mov dx, [esp + 4]  ; address
+    out dx, al
+    ret
+
 loader:
     mov  esp, kernel_stack + KERNEL_STACK_SIZE
-    push dword 4
-    push dword 3
-    call c_add
-    ; mov  eax, 0xDEADBEEF
+    call main
 .loop:
     jmp  .loop
 
