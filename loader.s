@@ -1,5 +1,6 @@
 global loader
 global a_out
+global a_in
 
 extern main
 
@@ -25,6 +26,17 @@ a_out:
     mov dx, [esp + 4]  ; address
     out dx, al
     ret
+
+a_in:
+    mov dx, [esp + 4]  ; address
+    in  al, dx
+    ret
+
+; a_in:
+;     mov al, [esp + 8]  ; data to be sent
+;     mov dx, [esp + 4]  ; address
+;     out dx, al
+;     ret
 
 loader:
     mov  esp, kernel_stack + KERNEL_STACK_SIZE
