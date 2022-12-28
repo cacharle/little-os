@@ -132,7 +132,6 @@ void fb_clear(void)
         }
 }
 
-
 int main(void)
 {
     serial_configure_baud_rate(SERIAL_COM1_BASE, 2);
