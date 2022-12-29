@@ -8,7 +8,8 @@ typedef i8             bool;
 
 void a_out(u16 port, u8 data);
 u8 a_in(u16 port);
-void a_lgdt(void *gdt);
+// void a_lgdt(void *gdt);
+void a_lgdt(u16 limit, u32 base);
 
 void *memset(void *dst, u8 x, u32 size)
 {
@@ -164,19 +165,19 @@ struct gdt_entry {
     u16 limit1: 16; // maximum addressable unit
     u32 base1: 24; // address where segment begins
 
-    u8 access_present: 1; // always set to 1
-    u8 access_descriptor_privilege_level: 2; // 0-3, 0 is highest priority
-    u8 access_descriptor_type: 1; // 0 = task state segment, 1 = code or data segment
-    u8 access_executable: 1; // 0 = data segment, 1 = code segment
-    u8 access_direction_conforming: 1; // for data: if it grows up or down, for code: if can be executed by lower ring
-    u8 access_read_write: 1; // for code: can be read (can never write), for data: can be write (can always read)
     u8 access_accessed: 1; // always clear
+    u8 access_read_write: 1; // for code: can be read (can never write), for data: can be write (can always read)
+    u8 access_direction_conforming: 1; // for data: if it grows up or down, for code: if can be executed by lower ring
+    u8 access_executable: 1; // 0 = data segment, 1 = code segment
+    u8 access_descriptor_type: 1; // 0 = task state segment, 1 = code or data segment
+    u8 access_descriptor_privilege_level: 2; // 0-3, 0 is highest priority
+    u8 access_present: 1; // always set to 1
 
     u8 limit2: 4;
-    u8 flags_granularity: 1; // 0 = limit is bytes, 1 = limit is 4K blocks
-    u8 flags_size: 1; // 0 = 16-bit segment, 1 = 32-bit segment
-    u8 flags_long_mode: 1; // 64-bit segment if set
     u8 _flags_reserved: 1;
+    u8 flags_long_mode: 1; // 64-bit segment if set
+    u8 flags_size: 1; // 0 = 16-bit segment, 1 = 32-bit segment
+    u8 flags_granularity: 1; // 0 = limit is bytes, 1 = limit is 4K blocks
     u32 base2: 8;
 } __attribute__((packed));
 
@@ -194,56 +195,101 @@ void gdt_entry_init(struct gdt_entry *entry, u32 base, u32 limit, u8 code_segmen
     entry->access_descriptor_privilege_level = 0;
     entry->access_descriptor_type = 1;
     entry->access_executable = code_segment;
-    entry->access_direction_conforming = 1;
+    entry->access_direction_conforming = 0;
     entry->access_read_write = 1;
     entry->access_accessed = 0;
 
-    entry->flags_granularity = 0;
+    entry->flags_granularity = 1;
     entry->flags_size = 1;
     entry->flags_long_mode = 0;
 }
 
 struct gdt_entry gdt[3] = {0};
 
+struct GDT {
+    u32 base;
+    u32 limit;
+    u32 flags;
+    u32 access_byte;
+};
+
+// void encodeGdtEntry(u8 *target, struct GDT *source)
+// {
+//     // Check the limit to make sure that it can be encoded
+//     // if (source.limit > 0xFFFFF) {kerror("GDT cannot encode limits larger than 0xFFFFF");}
+//
+//     // Encode the limit
+//     target[0] = source->limit & 0xFF;
+//     target[1] = (source->limit >> 8) & 0xFF;
+//     target[6] = (source->limit >> 16) & 0x0F;
+//
+//     // Encode the base
+//     target[2] = source->base & 0xFF;
+//     target[3] = (source->base >> 8) & 0xFF;
+//     target[4] = (source->base >> 16) & 0xFF;
+//     target[7] = (source->base >> 24) & 0xFF;
+//
+//     // Encode the access byte
+//     target[5] = source->access_byte;
+//
+//     // Encode the flags
+//     target[6] |= (source->flags << 4);
+// }
+
+struct foo {
+    u16 size;
+    u32 address;
+} __attribute__((packed));
 
 int main(void)
 {
     memset(&gdt[0], 0, sizeof(struct gdt_entry));
     gdt_entry_init(&gdt[1], 0x00400000, 0x003FFFFF, 1);
     gdt_entry_init(&gdt[2], 0x00800000, 0x003FFFFF, 0);
-    struct {
-        u32 address;
-        u32 size;
-    } lgdt_param = {
-        .address = (u32)gdt,
-        .size = sizeof(gdt)
-    };
-    a_lgdt(&lgdt_param);
+    // struct foo *lgdt_param = (struct foo*)0x800;
+    // lgdt_param->address = (u32)gdt;
+    // lgdt_param->size = sizeof(struct gdt_entry) * 3 - 1;
+    // {
+        // .address = (u32)gdt,
+        // .size = sizeof(struct gdt_entry) * 3 - 1,
+    // };
+    // a_lgdt(lgdt_param);
+    // a_lgdt(sizeof(gdt), (u32)gdt);
 
-    serial_configure_baud_rate(SERIAL_COM1_BASE, 2);
-    serial_configure_line(SERIAL_COM1_BASE);
-    char s[] =  "bonjour";
-    // serial_putstr(SERIAL_COM1_BASE, s);
-    // serial_putu32_x(SERIAL_COM1_BASE, 0xdead1234);
-    serial_putu32_x(SERIAL_COM1_BASE, sizeof(struct gdt_entry));
-    serial_putu32_x(SERIAL_COM1_BASE, sizeof(gdt));
+    // serial_configure_baud_rate(SERIAL_COM1_BASE, 2);
+    // serial_configure_line(SERIAL_COM1_BASE);
+    // char s[] =  "bonjour";
+    // // serial_putstr(SERIAL_COM1_BASE, s);
+    // // serial_putu32_x(SERIAL_COM1_BASE, 0xdead1234);
+    // serial_putu32_x(SERIAL_COM1_BASE, sizeof(struct gdt_entry));
+    // serial_putu32_x(SERIAL_COM1_BASE, sizeof(gdt));
+    //
+    // u8 *t = gdt;
+    // for (int i = 0; i < sizeof(gdt); i++)
+    //     serial_putchar(SERIAL_COM1_BASE, t[i]);
+    // u8 flags = gdt[1].flags_size | gdt[1].flags_long_mode | gdt[1].flags_granularity;
+    // serial_putchar(SERIAL_COM1_BASE, flags);
+    // serial_putchar(SERIAL_COM1_BASE, 0x0);
+    // serial_putchar(SERIAL_COM1_BASE, 0x0);
+    // serial_putchar(SERIAL_COM1_BASE, 0x0);
+    // serial_putchar(SERIAL_COM1_BASE, 0x0);
+    // serial_putchar(SERIAL_COM1_BASE, 0x0);
+    // serial_putchar(SERIAL_COM1_BASE, 0x0);
+    // serial_putchar(SERIAL_COM1_BASE, 0x0);
 
-    u8 *t = gdt;
-    for (int i = 0; i < sizeof(gdt); i++)
-        serial_putchar(SERIAL_COM1_BASE, t[i]);
+    // fb_clear();
+    // fb_putstr(0, 0, s);
 
-    fb_clear();
-    fb_putstr(0, 0, s);
-    // fb_putchar(0, 0, 'A');
-    // fb_putchar(1, 1, 'B');
-    // fb_putchar(2, 2, 'C');
-    // fb_putchar(3, 3, 'D');
-    // fb_putchar(4, 4, 'E');
-
-    // fb_move_cursor(100);
-
-    // fb[0] = 'A';
-    // fb[1] = 0x28;
+    // u8 foo[8] = {0};
+    // struct GDT g = {
+    //     .base =  0x00400000,
+    //     .limit = 0x003FFFFF,
+    //     .flags = 0xC,
+    //     .access_byte = 0x92,
+    // };
+    // encodeGdtEntry(foo, &g);
+    // for (int i = 0; i < 8; i++)
+    //     serial_putchar(SERIAL_COM1_BASE, foo[i]);
 
     return 0xdeadbeef;
 }
