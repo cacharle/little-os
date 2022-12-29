@@ -1,6 +1,7 @@
 global loader
 global a_out
 global a_in
+global a_lgdt
 
 extern main
 
@@ -32,6 +33,10 @@ a_in:
     in  al, dx
     ret
 
+a_lgdt:
+    lgdt [esp + 4]
+    ret
+
 ; a_in:
 ;     mov al, [esp + 8]  ; data to be sent
 ;     mov dx, [esp + 4]  ; address
@@ -41,6 +46,13 @@ a_in:
 loader:
     mov  esp, kernel_stack + KERNEL_STACK_SIZE
     call main
+    ; mov ax, 0x10
+    ; mov ds, ax
+    ; mov ss, ax
+    ; mov es, ax
+    ; jmp 0x08:flush_cs
+flush_cs:
+
 .loop:
     jmp  .loop
 

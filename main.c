@@ -8,6 +8,15 @@ typedef i8             bool;
 
 void a_out(u16 port, u8 data);
 u8 a_in(u16 port);
+void a_lgdt(void *gdt);
+
+void *memset(void *dst, u8 x, u32 size)
+{
+    u8 *dst_8 = dst;
+    for (u32 i = 0; i < size; i++)
+        dst_8[i] = x;
+    return dst;
+}
 
 u16 *fb = (u16*)0x000B8000;
 
@@ -96,6 +105,20 @@ void serial_putstr(u16 com, const char *s)
 
 }
 
+void serial_putu8_x(u16 com, u32 n)
+{
+    u8 b1 = (n >> 4) & 0xF;
+    u8 b2 = (n >> 0) & 0xF;
+    serial_putchar(com, b1 < 10 ? b1 + '0' : b1 - 10 + 'A');
+    serial_putchar(com, b2 < 10 ? b2 + '0' : b2 - 10 + 'A');
+}
+
+void serial_putu32_x(u16 com, u32 n)
+{
+    for (int i = 0; i < 4; i++)
+        serial_putu8_x(com, (n >> (8 * (3 - i))) & 0xFF);
+}
+
 #define FB_WIDTH 80  // can't have global?
 #define FB_HEIGHT 25
 
@@ -132,12 +155,82 @@ void fb_clear(void)
         }
 }
 
+struct gdt_descriptor {
+    u32 address: 32;
+    u16 size: 16;
+};
+
+struct gdt_entry {
+    u16 limit1: 16; // maximum addressable unit
+    u32 base1: 24; // address where segment begins
+
+    u8 access_present: 1; // always set to 1
+    u8 access_descriptor_privilege_level: 2; // 0-3, 0 is highest priority
+    u8 access_descriptor_type: 1; // 0 = task state segment, 1 = code or data segment
+    u8 access_executable: 1; // 0 = data segment, 1 = code segment
+    u8 access_direction_conforming: 1; // for data: if it grows up or down, for code: if can be executed by lower ring
+    u8 access_read_write: 1; // for code: can be read (can never write), for data: can be write (can always read)
+    u8 access_accessed: 1; // always clear
+
+    u8 limit2: 4;
+    u8 flags_granularity: 1; // 0 = limit is bytes, 1 = limit is 4K blocks
+    u8 flags_size: 1; // 0 = 16-bit segment, 1 = 32-bit segment
+    u8 flags_long_mode: 1; // 64-bit segment if set
+    u8 _flags_reserved: 1;
+    u32 base2: 8;
+} __attribute__((packed));
+
+void gdt_entry_init(struct gdt_entry *entry, u32 base, u32 limit, u8 code_segment)
+{
+    memset(entry, 0, sizeof(struct gdt_entry));
+    // assert limit <= 0xFFFFF
+    entry->limit1 = limit & 0xFFFF;
+    entry->limit2 = (limit >> 16) & 0x0F;
+
+    entry->base1 = base & 0xFFFFFF;
+    entry->base2 = (base >> 24) & 0xFF;
+
+    entry->access_present = 1;
+    entry->access_descriptor_privilege_level = 0;
+    entry->access_descriptor_type = 1;
+    entry->access_executable = code_segment;
+    entry->access_direction_conforming = 1;
+    entry->access_read_write = 1;
+    entry->access_accessed = 0;
+
+    entry->flags_granularity = 0;
+    entry->flags_size = 1;
+    entry->flags_long_mode = 0;
+}
+
+struct gdt_entry gdt[3] = {0};
+
+
 int main(void)
 {
+    memset(&gdt[0], 0, sizeof(struct gdt_entry));
+    gdt_entry_init(&gdt[1], 0x00400000, 0x003FFFFF, 1);
+    gdt_entry_init(&gdt[2], 0x00800000, 0x003FFFFF, 0);
+    struct {
+        u32 address;
+        u32 size;
+    } lgdt_param = {
+        .address = (u32)gdt,
+        .size = sizeof(gdt)
+    };
+    a_lgdt(&lgdt_param);
+
     serial_configure_baud_rate(SERIAL_COM1_BASE, 2);
     serial_configure_line(SERIAL_COM1_BASE);
     char s[] =  "bonjour";
-    serial_putstr(SERIAL_COM1_BASE, s);
+    // serial_putstr(SERIAL_COM1_BASE, s);
+    // serial_putu32_x(SERIAL_COM1_BASE, 0xdead1234);
+    serial_putu32_x(SERIAL_COM1_BASE, sizeof(struct gdt_entry));
+    serial_putu32_x(SERIAL_COM1_BASE, sizeof(gdt));
+
+    u8 *t = gdt;
+    for (int i = 0; i < sizeof(gdt); i++)
+        serial_putchar(SERIAL_COM1_BASE, t[i]);
 
     fb_clear();
     fb_putstr(0, 0, s);
