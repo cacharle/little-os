@@ -80,12 +80,12 @@ a_lgdt:
     jmp CODE_SEG:flush_cs
 [bits 32]
 flush_cs:
-    ; mov ax, 0x10
-    ; mov ds, ax
-    ; mov es, ax
-    ; mov fs, ax
-    ; mov gs, ax
-    ; mov ss, ax
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
     ret
 
 ; a_in:
@@ -97,8 +97,8 @@ flush_cs:
 loader:
     mov  esp, kernel_stack + KERNEL_STACK_SIZE
     call a_lgdt
-    mov eax, 0xdeadbeef
-    ; call main
+    ; mov eax, 0xdeadbeef
+    call main
 
 .loop:
     jmp  .loop

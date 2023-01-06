@@ -206,12 +206,12 @@ void gdt_entry_init(struct gdt_entry *entry, u32 base, u32 limit, u8 code_segmen
 
 struct gdt_entry gdt[3] = {0};
 
-struct GDT {
-    u32 base;
-    u32 limit;
-    u32 flags;
-    u32 access_byte;
-};
+// struct GDT {
+//     u32 base;
+//     u32 limit;
+//     u32 flags;
+//     u32 access_byte;
+// };
 
 // void encodeGdtEntry(u8 *target, struct GDT *source)
 // {
@@ -236,16 +236,16 @@ struct GDT {
 //     target[6] |= (source->flags << 4);
 // }
 
-struct foo {
-    u16 size;
-    u32 address;
-} __attribute__((packed));
+// struct foo {
+//     u16 size;
+//     u32 address;
+// } __attribute__((packed));
 
 int main(void)
 {
-    memset(&gdt[0], 0, sizeof(struct gdt_entry));
-    gdt_entry_init(&gdt[1], 0x00400000, 0x003FFFFF, 1);
-    gdt_entry_init(&gdt[2], 0x00800000, 0x003FFFFF, 0);
+    // memset(&gdt[0], 0, sizeof(struct gdt_entry));
+    // gdt_entry_init(&gdt[1], 0x00400000, 0x003FFFFF, 1);
+    // gdt_entry_init(&gdt[2], 0x00800000, 0x003FFFFF, 0);
     // struct foo *lgdt_param = (struct foo*)0x800;
     // lgdt_param->address = (u32)gdt;
     // lgdt_param->size = sizeof(struct gdt_entry) * 3 - 1;
@@ -256,11 +256,11 @@ int main(void)
     // a_lgdt(lgdt_param);
     // a_lgdt(sizeof(gdt), (u32)gdt);
 
-    // serial_configure_baud_rate(SERIAL_COM1_BASE, 2);
-    // serial_configure_line(SERIAL_COM1_BASE);
-    // char s[] =  "bonjour";
-    // // serial_putstr(SERIAL_COM1_BASE, s);
-    // // serial_putu32_x(SERIAL_COM1_BASE, 0xdead1234);
+    serial_configure_baud_rate(SERIAL_COM1_BASE, 2);
+    serial_configure_line(SERIAL_COM1_BASE);
+    char s[] =  "bonjour";
+    serial_putstr(SERIAL_COM1_BASE, s);
+    // serial_putu32_x(SERIAL_COM1_BASE, 0xdead1234);
     // serial_putu32_x(SERIAL_COM1_BASE, sizeof(struct gdt_entry));
     // serial_putu32_x(SERIAL_COM1_BASE, sizeof(gdt));
     //
@@ -277,8 +277,8 @@ int main(void)
     // serial_putchar(SERIAL_COM1_BASE, 0x0);
     // serial_putchar(SERIAL_COM1_BASE, 0x0);
 
-    // fb_clear();
-    // fb_putstr(0, 0, s);
+    fb_clear();
+    fb_putstr(0, 0, s);
 
     // u8 foo[8] = {0};
     // struct GDT g = {
