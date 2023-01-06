@@ -2,3 +2,4 @@ iso/
 *.iso
 *.log
 *.o
+*.elf
